@@ -97,43 +97,50 @@ async function getCorrectAnswer() {
             return answer ? answer.letter : null;
         } else {
             createAndShowNotification("Não foi possível obter a resposta.");
+            return null;
         }
     } catch (error) {
         console.error('Erro ao buscar a resposta:', error);
         createAndShowNotification('Erro ao buscar a resposta.');
+        return null;
     }
 }
 
 async function processExercise() {
-    const correctAnswer = await getCorrectAnswer();
+    try {
+        const correctAnswer = await getCorrectAnswer();
 
-    if (correctAnswer) {
-        createAndShowNotification(`RESPOSTA: ${correctAnswer}`);
-        const buttons = document.querySelectorAll('.exercise-answer__button');
-        let clicked = false;
+        if (correctAnswer) {
+            createAndShowNotification(`RESPOSTA: ${correctAnswer}`);
+            const buttons = document.querySelectorAll('.exercise-answer__button');
+            let clicked = false;
 
-        buttons.forEach(button => {
-            const letterElement = button.querySelector('.exercise-answer__letter');
-            if (letterElement && letterElement.textContent.trim() === correctAnswer) {
-                button.click();
-                clicked = true;
-            }
-        });
+            buttons.forEach(button => {
+                const letterElement = button.querySelector('.exercise-answer__letter');
+                if (letterElement && letterElement.textContent.trim() === correctAnswer) {
+                    button.click();
+                    clicked = true;
+                }
+            });
 
-        if (clicked) {
-            const submitButton = document.querySelector('.btn.btn--primary.btn--size-md.submit-button');
-            if (submitButton) {
-                submitButton.click();
-                await new Promise(resolve => setTimeout(resolve, 1000));
+            if (clicked) {
+                const submitButton = document.querySelector('.btn.btn--primary.btn--size-md.submit-button');
+                if (submitButton) {
+                    submitButton.click();
+                    await new Promise(resolve => setTimeout(resolve, 1000));
 
-                const nextButton = document.querySelector('.btn.btn--primary.btn--size-md');
-                if (nextButton) {
-                    nextButton.click();
+                    const nextButton = document.querySelector('.btn.btn--primary.btn--size-md');
+                    if (nextButton) {
+                        nextButton.click();
+                    }
                 }
             }
+        } else {
+            createAndShowNotification("Resposta não encontrada.");
         }
-    } else {
-        createAndShowNotification("Resposta não encontrada.");
+    } catch (error) {
+        console.error('Erro ao processar o exercício:', error);
+        createAndShowNotification("Erro ao processar o exercício.");
     }
 }
 
@@ -142,9 +149,20 @@ async function processExercise() {
 
     let oldHref = document.location.href;
     const observer = new MutationObserver(async () => {
-        if (oldHref !== document.location.href) {
-            oldHref = document.location.href;
-            await processExercise();
+        try {
+            if (oldHref !== document.location.href) {
+                observer.disconnect();
+                oldHref = document.location.href;
+                await processExercise();
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Aguarda 1 segundo antes de reconectar
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+            }
+        } catch (error) {
+            console.error("Erro no observador:", error);
+            createAndShowNotification("Erro ao observar mudanças na página.");
         }
     });
 
